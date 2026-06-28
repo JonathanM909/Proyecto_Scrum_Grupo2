@@ -1,0 +1,413 @@
+Comandos usados en el proyecto
+
+-------------------------------------------------------------------
+	SWM1
+enable
+configure terminal
+hostname SWM1
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable secret G2DP
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- Enrutamiento y Bridge ---
+ip routing
+ipv6 unicast-routing
+
+bridge irb
+bridge 1 protocol ieee
+bridge 1 route ip
+
+! --- P2P hacia R1 ---
+interface e0/1
+ no switchport
+ ip address 172.16.10.161 255.255.255.252
+ ipv6 address 2001:25:16:A::1/64
+ no shutdown
+exit
+
+! --- Hacia SW2 (Finanzas/Academicos) ---
+interface e0/0
+ no shutdown
+exit
+
+interface e0/0.30
+ description VLAN Academicos
+ encapsulation dot1Q 30
+ ip address 172.16.9.1 255.255.255.128
+ ipv6 address 2001:25:16:3::1/64
+exit
+
+interface e0/0.40
+ description VLAN Finanzas
+ encapsulation dot1Q 40
+ ip address 172.16.9.129 255.255.255.128
+ ipv6 address 2001:25:16:4::1/64
+exit
+
+interface e0/0.90
+ description VLAN Blackhull
+ encapsulation dot1Q 90
+ bridge-group 1
+exit
+
+! --- Hacia SW1 (Datacenter) ---
+interface e0/2
+ no shutdown
+exit
+
+interface e0/2.50
+ description VLAN Datacenter
+ encapsulation dot1Q 50
+ ip address 172.16.10.1 255.255.255.192
+ ipv6 address 2001:25:16:5::1/64
+exit
+
+interface e0/2.90
+ description VLAN Blackhull
+ encapsulation dot1Q 90
+ bridge-group 1
+exit
+
+! --- Gateway Administrativo ---
+interface BVI1
+ ip address 172.16.10.145 255.255.255.240
+ ipv6 address 2001:25:16:9::1/64
+ no shutdown
+exit
+
+! --- Rutas Estaticas IPv4 ---
+ip route 172.16.0.0 255.255.248.0 172.16.10.162
+ip route 172.16.8.0 255.255.255.0 172.16.10.162
+ip route 172.16.10.64 255.255.255.224 172.16.10.162
+ip route 172.16.10.96 255.255.255.224 172.16.10.162
+ip route 172.16.10.128 255.255.255.240 172.16.10.162
+
+! --- Rutas Estaticas IPv6 ---
+ipv6 route 2001:25:16:1::/64 2001:25:16:A::2
+ipv6 route 2001:25:16:2::/64 2001:25:16:A::2
+ipv6 route 2001:25:16:6::/64 2001:25:16:A::2
+ipv6 route 2001:25:16:7::/64 2001:25:16:A::2
+ipv6 route 2001:25:16:8::/64 2001:25:16:A::2
+end
+write
+-----------------------------------------------------------------------------------------
+SW2 (Switch de Acceso Inferior Izquierdo)
+
+Cisco CLI
+enable
+configure terminal
+hostname SW2
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable G2DP
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- VLANs ---
+vtp mode transparent
+
+vlan 30
+ name Academicos
+vlan 40
+ name Finanzas
+vlan 90
+ name Blackhull_R2
+exit
+
+! --- Puertos ---
+interface e0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ no shutdown
+exit
+
+interface e0/1
+ switchport mode access
+ switchport access vlan 30
+ no shutdown
+exit
+
+interface e0/2
+ switchport mode access
+ switchport access vlan 40
+ no shutdown
+exit
+
+! --- Administracion ---
+interface vlan 90
+ ip address 172.16.10.146 255.255.255.240
+ no shutdown
+exit
+ip default-gateway 172.16.10.145
+end
+write
+
+ 
+-------------------------------------------------------------------------------
+SW1 (Switch de Acceso Datacenter)
+      enable
+configure terminal
+hostname SW1
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable secret donapanch1234
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- VLANs ---
+vtp mode transparent
+
+vlan 50
+ name Datacenter
+vlan 90
+ name Blackhull_R2
+exit
+
+! --- Puertos ---
+interface e0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ no shutdown
+exit
+
+interface e0/1
+ switchport mode access
+ switchport access vlan 50
+ no shutdown
+exit
+
+! --- Administracion ---
+interface vlan 90
+ ip address 172.16.10.147 255.255.255.240
+ no shutdown
+exit
+ip default-gateway 172.16.10.145
+end
+write
+--------------------------------------------------------------------------------------------
+R1 (Router Core)
+             enable
+configure terminal
+hostname R1
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable secret donapanch1234
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- Base ---
+ipv6 unicast-routing
+
+! --- P2P hacia SWM1 ---
+interface e0/0
+ no switchport
+ ip address 172.16.10.162 255.255.255.252
+ ipv6 address 2001:25:16:A::2/64
+ no shutdown
+exit
+
+! --- Troncal y Subinterfaces ---
+interface e0/1
+ no shutdown
+exit
+
+interface e0/1.10
+ description VLAN Estudiantes
+ encapsulation dot1Q 10
+ ip address 172.16.0.1 255.255.248.0
+ ipv6 address 2001:25:16:1::1/64
+exit
+
+interface e0/1.20
+ description VLAN Docentes
+ encapsulation dot1Q 20
+ ip address 172.16.8.1 255.255.255.0
+ ipv6 address 2001:25:16:2::1/64
+exit
+
+interface e0/1.60
+ description VLAN Gestion
+ encapsulation dot1Q 60
+ ip address 172.16.10.65 255.255.255.224
+ ipv6 address 2001:25:16:6::1/64
+exit
+
+interface e0/1.70
+ description VLAN Voz
+ encapsulation dot1Q 70
+ ip address 172.16.10.97 255.255.255.224
+ ipv6 address 2001:25:16:7::1/64
+exit
+
+interface e0/1.80
+ description VLAN Blackhull R1
+ encapsulation dot1Q 80
+ ip address 172.16.10.129 255.255.255.240
+ ipv6 address 2001:25:16:8::1/64
+exit
+
+! --- Rutas Estaticas IPv4 ---
+ip route 172.16.9.0 255.255.255.128 172.16.10.161
+ip route 172.16.9.128 255.255.255.128 172.16.10.161
+ip route 172.16.10.0 255.255.255.192 172.16.10.161
+ip route 172.16.10.144 255.255.255.240 172.16.10.161
+
+! --- Rutas Estaticas IPv6 ---
+ipv6 route 2001:25:16:3::/64 2001:25:16:A::1
+ipv6 route 2001:25:16:4::/64 2001:25:16:A::1
+ipv6 route 2001:25:16:5::/64 2001:25:16:A::1
+ipv6 route 2001:25:16:9::/64 2001:25:16:A::1
+end
+write
+
+ 
+--------------------------------------------------------------------------------------------
+SW3 (Switch de Distribución Derecho)
+
+enable
+configure terminal
+hostname SW3
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable secret donapanch1234
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- VTP y VLANs ---
+vtp domain VTP_R1
+vtp mode server
+vtp password cisco
+
+vlan 10
+ name Estudiantes
+vlan 20
+ name Docentes
+vlan 60
+ name Gestion
+vlan 70
+ name Voz
+vlan 80
+ name Blackhull_R1
+exit
+
+! --- Puertos ---
+interface e0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ no shutdown
+exit
+
+interface range e0/1 - 2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ no shutdown
+exit
+
+interface e0/3
+ switchport mode access
+ switchport access vlan 20
+ no shutdown
+exit
+
+! --- Administracion ---
+interface vlan 80
+ ip address 172.16.10.130 255.255.255.240
+ no shutdown
+exit
+ip default-gateway 172.16.10.129
+end
+write
+
+
+
+
+----------------------------------------------------------------------------- 
+SW4 (Switch Extremo Derecho)
+
+
+enable
+configure terminal
+hostname SW4
+
+! --- Seguridad ---
+banner motd # PROYECTO SCRUM - GRUPO #2 #
+ip domain-name donapanch.tech
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+username admin privilege 15 secret donapanch1234
+enable secret donapanch1234
+line vty 0 4
+ login local
+ transport input ssh
+exit
+
+! --- VTP ---
+vtp domain VTP_R1
+vtp mode client
+vtp password cisco
+
+! --- Puertos ---
+interface range e0/1 - 2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ no shutdown
+exit
+
+interface e0/0
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+exit
+
+interface e0/3
+ switchport mode access
+ switchport access vlan 60
+ no shutdown
+exit
+
+! --- Administracion ---
+interface vlan 80
+ ip address 172.16.10.131 255.255.255.240
+ no shutdown
+exit
+ip default-gateway 172.16.10.129
+end
+write
+
